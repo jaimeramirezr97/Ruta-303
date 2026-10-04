@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ruta 303 AM · Prueba móvil</title>
+<style>
+:root{--blue:#0b4f7d;--violet:#6a4aa8;--bg:#f3f7fb;--card:#fff;--ok:#237a48;--warn:#a45a00;--red:#a93232;--ink:#17324a}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:linear-gradient(135deg,var(--blue),var(--violet));color:white;padding:18px 16px 14px;position:sticky;top:0;z-index:5}
+h1{font-size:21px;margin:0 0 5px}.sub{font-size:12px;opacity:.9}
+main{max-width:680px;margin:auto;padding:12px 12px 90px}
+.card{background:var(--card);border-radius:16px;padding:14px;margin:10px 0;box-shadow:0 2px 12px #16324a18}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#edf5fb;border-radius:12px;padding:10px}.label{font-size:11px;color:#587083}.value{font-size:17px;font-weight:700;margin-top:3px}
+button{border:0;border-radius:13px;padding:13px 11px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:white}.secondary{background:#e8e0f4;color:#493474}.danger{background:#f8dddd;color:#8c2525}.ok{background:#daf1e4;color:#17643a}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.full{grid-column:1/-1}
+.notice{font-size:12px;line-height:1.45;background:#fff4d7;border-left:4px solid #d79a00;padding:10px;border-radius:8px}
+.stop{display:flex;gap:10px;padding:11px 4px;border-bottom:1px solid #e3ebf2;align-items:flex-start}
+.badge{min-width:42px;background:#e8f2fa;color:var(--blue);border-radius:10px;padding:7px 4px;text-align:center;font-weight:700;font-size:12px}
+.stop.done{opacity:.48}.stop.current{background:#f0ebfa;border-radius:10px;padding:11px 8px}.stop.current .badge{background:var(--violet);color:white}
+.name{font-weight:700;font-size:14px}.meta{font-size:12px;color:#65798a;margin-top:3px}
+#log{font-family:ui-monospace,monospace;font-size:11px;white-space:pre-wrap;max-height:150px;overflow:auto;background:#102333;color:#d9edf9;padding:10px;border-radius:10px}
+.small{font-size:11px;color:#63788a;line-height:1.4}
+.pill{display:inline-block;border-radius:99px;padding:5px 9px;font-size:11px;font-weight:700;background:#e7eef4}
+</style>
+</head>
+<body>
+<header><h1>🚌 Ruta 303 AM · Prueba móvil</h1><div class="sub">Prototipo de verificación en campo · 25 paradas</div></header>
+<main>
+<div class="notice"><b>Importante:</b> prototipo de prueba, no navegador certificado. No manipular el teléfono mientras se conduce. Las paradas transcritas deben verificarse antes de confiar en ellas.</div>
+
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center"><b>Estado</b><span id="modePill" class="pill">MODO PRUEBA</span></div>
+ <div class="grid" style="margin-top:10px">
+  <div class="stat"><div class="label">GPS</div><div class="value" id="gps">Sin iniciar</div></div>
+  <div class="stat"><div class="label">Precisión</div><div class="value" id="acc">—</div></div>
+  <div class="stat"><div class="label">Velocidad</div><div class="value" id="speed">—</div></div>
+  <div class="stat"><div class="label">Rumbo</div><div class="value" id="heading">—</div></div>
+ </div>
+ <div class="small" id="coords" style="margin-top:9px">Ubicación: —</div>
+</div>
+
+<div class="card">
+ <div class="label">PRÓXIMA PARADA</div>
+ <div class="value" id="nextName">P01 · Franklin Ave @ Everett Ave</div>
+ <div class="meta" id="nextMeta">6:59 AM · Aproximación WNW</div>
+</div>
+
+<div class="card">
+ <div class="actions">
+  <button class="primary full" onclick="startGPS()">📍 Activar GPS real</button>
+  <button class="ok" onclick="arrived()">✓ Marcar llegada</button>
+  <button class="secondary" onclick="undo()">↶ Volver una parada</button>
+  <button class="danger" onclick="issue()">⚠ Registrar problema</button>
+  <button class="secondary" onclick="resetRoute()">↺ Reiniciar prueba</button>
+ </div>
+</div>
+
+<div class="card"><b>Registro de prueba</b><div id="log" style="margin-top:9px">Listo para comenzar.</div>
+<button class="secondary" style="width:100%;margin-top:9px" onclick="copyLog()">Copiar registro para WhatsApp</button></div>
+
+<div class="card"><b>Paradas</b><div id="stops"></div></div>
+<div class="small">Esta versión registra GPS y avance manual. Todavía no calcula rutas por calles, tráfico ni desvíos automáticos. Su objetivo es validar en campo las paradas, el orden y el funcionamiento del GPS antes de añadir navegación real.</div>
+</main>
+<script>
+const stops=[
+["P01","6:59 AM","Franklin Ave @ Everett Ave","WNW"],["P02","7:00 AM","Morse Ave @ Woodland Ave","N"],
+["P03","7:01 AM","Van Houten Ave @ Voorhis Ave","W"],["P04","7:02 AM","Van Houten Ave @ Martom Rd","WNW"],
+["P05","7:03 AM","Martom Rd @ Village Pl","NNE"],["P06","7:04 AM","Pathway Manor @ Martom Rd","NNE"],
+["P07","7:05 AM","Pathway Manor @ W Stevens Ave","WNW"],["P08","7:08 AM","Wyckoff Ave @ Brownstone Ct","ESE"],
+["P09","7:09 AM","Wyckoff Ave @ Monroe Ave","ESE"],["P10","7:10 AM","Wyckoff Ave @ Hartung Dr","S"],
+["P11","7:11 AM","Wyckoff Ave @ Parmley St","S"],["P12","7:13 AM","Franklin Ave @ Quackenbush Ave","ENE"],
+["P13","7:14 AM","Franklin Ave @ Fairview Pl","ENE"],["P14","7:15 AM","Franklin Ave @ Woodfield","E"],
+["P15","7:17 AM","Old Woods Rd @ Clinton Ave","S"],["P16","7:18 AM","Lawlins Rd @ Burritt Pl","N"],
+["P17","7:19 AM","Franklin Ave @ Cresthaven Rd","WNW"],["P18","7:20 AM","Cresthaven Rd @ Covington Pl","N"],
+["P19","7:21 AM","Covington Pl @ Haddon Pl","E"],["P20","7:32 AM","Hiawatha Blvd @ Ithaca Pl","ESE"],
+["P21","7:34 AM","Hiawatha @ Monhegan","SSE"],["P22","7:35 AM","Monhegan Ave @ Manito Ave","SSW"],
+["P23","7:38 AM","Iroquois Ave @ Hiawatha Blvd","N"],["P24","7:39 AM","Hiawatha Blvd @ Calumet Ave","ESE"],
+["P25","7:40 AM","Seneca Ave @ Minnehaha Blvd","ESE"]];
+let idx=0,watch=null,logs=[];
+function render(){
+ let el=document.getElementById("stops"); el.innerHTML="";
+ stops.forEach((s,i)=>{let d=document.createElement("div");d.className="stop "+(i<idx?"done":i===idx?"current":"");
+ d.innerHTML=`<div class="badge">${s[0]}</div><div><div class="name">${s[2]}</div><div class="meta">${s[1]} · Aproximación ${s[3]}</div></div>`;el.appendChild(d)});
+ if(idx<stops.length){nextName.textContent=stops[idx][0]+" · "+stops[idx][2];nextMeta.textContent=stops[idx][1]+" · Aproximación "+stops[idx][3]}
+ else{nextName.textContent="Ruta completada ✓";nextMeta.textContent="25 paradas registradas"}
+}
+function addLog(t){let x=new Date().toLocaleTimeString();logs.push(x+" · "+t);log.textContent=logs.join("\n");log.scrollTop=log.scrollHeight}
+function startGPS(){
+ if(!navigator.geolocation){gps.textContent="No disponible";addLog("GPS no disponible en este navegador");return}
+ gps.textContent="Solicitando…";addLog("Solicitud de GPS");
+ watch=navigator.geolocation.watchPosition(p=>{
+   gps.textContent="Activo ✓";acc.textContent=Math.round(p.coords.accuracy)+" m";
+   speed.textContent=p.coords.speed==null?"—":Math.round(p.coords.speed*3.6)+" km/h";
+   heading.textContent=p.coords.heading==null?"—":Math.round(p.coords.heading)+"°";
+   coords.textContent="Ubicación: "+p.coords.latitude.toFixed(6)+", "+p.coords.longitude.toFixed(6);
+ },e=>{gps.textContent="Error";addLog("Error GPS: "+e.message)},{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+}
+function arrived(){if(idx>=stops.length)return;addLog("Llegada "+stops[idx][0]+" · "+stops[idx][2]);idx++;render()}
+function undo(){if(idx>0){idx--;addLog("Retroceso a "+stops[idx][0]);render()}}
+function issue(){let note=prompt("Describa brevemente el problema (calle cerrada, lado incorrecto, parada errónea, etc.):");if(note)addLog("PROBLEMA cerca de "+(stops[idx]?.[0]||"fin")+": "+note)}
+function resetRoute(){if(confirm("¿Reiniciar la prueba desde P01?")){idx=0;logs=[];log.textContent="Prueba reiniciada.";render()}}
+async function copyLog(){let t="PRUEBA RUTA 303 AM\n"+logs.join("\n");try{await navigator.clipboard.writeText(t);alert("Registro copiado. Péguelo en WhatsApp.")}catch(e){prompt("Copie este texto:",t)}}
+render();
+</script>
+</body></html>
